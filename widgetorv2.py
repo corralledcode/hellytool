@@ -18,10 +18,10 @@ CFFx = C +  ['aeh','beg','chg','gjl','lno','oph']
 
 CFFxx = C + ['bdg','chi','aeh']
 
-#findrscover(V,E,C, False)
+findrscover(V,E,['defghijklmnopq'], False)
 #for c in findrscover(V,E,['defghijklmnopq'],False):
 #     simplifycover(c)
 
 
 
-checkrs( V,E,CFFxx)
+#checkrs( V,E,CFFxx)

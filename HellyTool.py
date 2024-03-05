@@ -117,105 +117,55 @@ def checkrs(V,E,C,verbose=True):
     print('All triangles met: ', alltriangle)
     return alltriangle
 
-def checkrsquicker(V,E,C,verbose=True):
-
-    #V = vertexremoveduplicates(V)
-    #E2 = []
-    #for e in E:
-    #    E2.append(parsecondensed(e))
-
-    #C2 = []
-    #for c in C:
-    #    C2.append(parsecondensed(c))
+def checkrsquicker(V,E,C,T = [],verbose=True):
 
     E2 = E
     C2 = C
 
-    E3 = []
-    #for e in E2:
-    #    for e1 in e:
-    #        for e2 in e:
-    #            if e1 < e2:
-    #                if not [e1,e2] in E3:
-    #                    E3.append([e1,e2])
 
     E3 = E2
 
-    #print('Ordered edges: ',E3)
-    #allcovered = True
-    #for v1 in V:
-    #    for v2 in V:
-    #        if [v1,v2] in E3:
-    #           covered = False
-    #           for c in C2:
-    #                if v1 in c and v2 in c:
-    #                    covered = True
-    #           if not covered:
-    #               allcovered = False
-    #               print('Edge ', v1, ' to ', v2, 'not covered')
-    #           #else:
-    #           #    print('Edge ', v1, ' to ', v2, ' covered')
-    #if verbose:
-    #    print('All covered: ', allcovered)
-    #alllegaledges = True
-    #for c in C2:
-    #    legaledges = True
-    #    illegaledges = []
-    #    for v1 in c:
-    #        for v2 in c:
-    #            if v1 < v2:
-    #                legaledges = (legaledges and ([v1,v2] in E3))
-    #                if not [v1,v2] in E3:
-    #                    illegaledges.append(v1+v2)
-    #    if not legaledges:
-    #        print('Illegal edges: ',illegaledges,' in cover: ',c)
-    #        alllegaledges = False
-    #if not alllegaledges:
-    #    print('All edges legal: ',alllegaledges)
-    alltriangle = True
-    for v1 in V:
-        for v2 in V:
-            for v3 in V:
-                if v1<v2 and v2<v3:
-                    if [v1,v2] in E3 and [v1,v3] in E3 and [v2,v3] in E3:
-                        #if verbose:
-                        #    print('Triangle ',v1+v2+v3)
-                        allmeet = False
-                        N = []
-                        neighborstext=[]
-                        for c in C2:
-                            if (v1 in c and v2 in c) or (v1 in c and v3 in c) or (v2 in c and v3 in c):
-                                N.append(c)
-                        neighborstext = neighborstext + N
-                        #if verbose:
-                        #    print('neighbors: ',N)
-                        #meettext = ''
+#    if T == []:
+#        T = graphfindtriangles(V,E3)
 
-                        for v in N[0]: # changed
-                            meet = True
-                            for n in N:
-                                meet = (meet and (v in n))
-                                if not meet: # added
-                                    break    # added
-                            if meet:
-                                #meettext = meettext + v
-                                #print('Meet ',v,': ',meet)
-                                allmeet = True
-                                break
-                        #if verbose:
-                        #    print('Meet: ',meettext)
-                        #    print('All meet at triangle ', v1+v2+v3, allmeet)
-                        #else:
-                        #    if not allmeet:
-                        #        print('Failed at triangle ',v1+v2+v3, ' with meet ',meettext, 'neighbors ',neighborstext)
-                        alltriangle = (alltriangle and allmeet)
-                if not alltriangle: #added
-                    break           #added
-            if not alltriangle:     #added
-                break               #added
-        if not alltriangle:         #added
-            break                   #added
-    #if verbose:
+    alltriangle = True
+    for t in T:
+        #if verbose:
+        #    print('Triangle ',v1+v2+v3)
+        allmeet = False
+        N = []
+        #neighborstext=[]
+        for c in C2:
+            if (t[0] in c and t[1] in c) or (t[1] in c and t[2] in c) or (t[2] in c and t[0] in c):
+                N.append(c)
+        #neighborstext = neighborstext + N
+        #if verbose:
+        #    print('neighbors: ',N)
+        #meettext = ''
+
+        for v in N[0]: # changed
+            meet = True
+            for n in range(1,len(N)):
+                meet = (meet and (v in N[n]))
+                if not meet: # added
+                    break    # added
+            if meet:
+                #meettext = meettext + v
+                #print('Meet ',v,': ',meet)
+                allmeet = True
+                break
+        #if verbose:
+        #    print('Meet: ',meettext)
+        #    print('All meet at triangle ', v1+v2+v3, allmeet)
+        #else:
+        #    if not allmeet:
+        #        print('Failed at triangle ',v1+v2+v3, ' with meet ',meettext, 'neighbors ',neighborstext)
+        alltriangle = (alltriangle and allmeet)
+        if not alltriangle: #added
+            T.remove(t)
+            T.insert(0,t)
+            break           #added
+     #if verbose:
     #    print('All triangles met: ', alltriangle)
     return alltriangle
 
@@ -338,6 +288,17 @@ def simplifycover(C,verbose=True):
 
     return Ctemp
 
+def graphfindtriangles(V,E):
+
+    output = []
+    for v1 in V:
+        for v2 in V:
+            for v3 in V:
+                if v1<v2 and v2<v3:
+                    if [v1,v2] in E and [v1,v3] in E and [v2,v3] in E:
+                        output.append([v1,v2,v3])
+    return output
+
 def labelappend( V, E, C, d ):
     Vtemp = []
     for v in V:
@@ -416,6 +377,40 @@ def neighborcount(V,E,v):
             if (not v == vtemp) and v in e and vtemp in e:
                 count = count + 1
     return count
+def findncoversbare( V,E,n):
+    allc = [[]]
+    if n <= 0:
+        return allc
+    n = n - 1
+    Carray = findncoversbare(V, E, n)
+    for c in Carray:
+        Vtemp = []
+        for v in V:
+            Vtemp.append(v) # working list
+        cnew = []
+        for v in c: # now remove any either not connected or already repped
+            cnew.append(v)
+            for v2 in V:
+                if (v >= v2) and (v2 in Vtemp):
+                    Vtemp.remove(v2)
+                    continue
+                found = False
+                for e in E:
+                    found = found or (v2 in e and v in e)
+                if (not found) and (v2 in Vtemp):
+                    Vtemp.remove(v2)
+        for v in Vtemp:
+            allc.append(cnew + [v])
+    if n >= 15:
+        print('...finding covers up to depth n=',n)
+    return allc
+
+def findncovers(V,E,n):
+    E2 = []
+    V = vertexremoveduplicates(V)
+    for e in E:
+        E2.append(parsecondensed(e))
+    return findncoversbare(V,E2,n)
 
 def maxcliquesize(V,E):
     maxn = 0
@@ -565,7 +560,13 @@ def findrscover(V, E, C = [], verbose = True):
         mcs = Delta
 
     contemp = []
-    print('Considering 2**',len(V2),'=',2**len(V2),' subsets of vertices in a graph having max clique size (after maybe some vertices removed) of',mcs)
+
+    print('Using max clique size =',mcs,' to reduce the problem of 2**',len(V2),'=',2**len(V2),' subsets of vertices')
+
+    contemp = findncoversbare(V2,E3,mcs)
+    T = graphfindtriangles(V, E3)
+
+    """ following code working but commented out to make way for findncovers
     for k in range(2**len(V2)):
         subgraph = []
         count = 0
@@ -590,6 +591,7 @@ def findrscover(V, E, C = [], verbose = True):
             if not allconnected:
                 break
         if allconnected:
+
             allvfound = False
             for c in Ctemp2:
                 found = True
@@ -601,14 +603,24 @@ def findrscover(V, E, C = [], verbose = True):
 
 
     #tidy up
+    """
 
+    contemp2 = []
+    for subgraph in contemp:
+        allvfound = False
+        for c in Ctemp2:
+            found = True
+            for v in subgraph:
+                found = found and v in c
+            allvfound = allvfound or found
+        if not allvfound:
+            contemp2.append(subgraph)
     con = []
-    constr = []
-    for c in contemp:
+    for c in contemp2:
         if len(c) >= 3:
-            temp = ''
-            for k in c:
-                temp = temp + k
+            #temp = ''
+            #for k in c:
+            #    temp = temp + k
             con.append(c)
 #            constr.append(temp)
 
@@ -662,7 +674,7 @@ def findrscover(V, E, C = [], verbose = True):
         if verbose:
             print('All covered: ', allcovered)
         if allcovered:
-            if checkrsquicker(Voverall,Eoverall,C2,verbose):
+            if checkrsquicker(Voverall,Eoverall,C2,T,verbose):
                 rscovers.append(C2)
     toc = time.perf_counter()
     print('Found', len(rscovers), 'RS-covers:')

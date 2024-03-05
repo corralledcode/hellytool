@@ -5,11 +5,13 @@ from HellyTool import checkrsquick
 from HellyTool import parsecondensed
 from widgetvariable import Vvar
 from widgetvariable import Evar
+from widgetvariable import Cvar
 from widgetvariable import CvarT
 from widgetvariable import CvarF
 from HellyTool import simplifycover
 from HellyTool import labelappend
 from HellyTool import mergevertex
+from HellyTool import findrscover
 import time
 
 labelbufferlength = 2
@@ -55,6 +57,9 @@ def recurse(Vn,En,Cn,V,E,C,n):
      Bns = []
      Dns = []
      Ens = []
+     for e in En:
+         Ens.append(e)
+
      for i in range(1,n+1):
           Bns = Bns + ['b'+str(i).zfill(labelbufferlength)]
           Dns = Dns + ['c'+str(i).zfill(labelbufferlength)]
@@ -95,7 +100,6 @@ def recurse(Vn,En,Cn,V,E,C,n):
           if not all:
                Cns = Cns + [c]
 
-     Ens = []
      for e in E:
           Etemp = ''
           etemp = parsecondensed(e)
@@ -399,10 +403,19 @@ def directsatcompute( Terms, Input ):
 tic2 = time.perf_counter()
 
 
+
+#V = []
+#E = []
+#C = []
+#V,E,C = recurse(Vvar,Evar,Cvar,['a','b','c','z'],['abcz'],['abc'],3)
+#C = C + ['a01b01z','a02c02z']
+#print(Vvar, Evar, Cvar, V,E,C)
+#checkrs(V,E,C)
+#findrscover(V,E,C,False)
+
 n = 3
 #satproblem = [['+1','+2','+3'],['-1','-2','+3'],['1','2','-3'],['1','2','-4'],['3','4','5'],['2','-3','5']]
 #satproblem = [['+1','+2','+3'],['-1','-2','+3'],['1','2','-3'],['1','2','-4']]
-
 
 satproblem = [['+1','+2','+3'],['-1','-2','+3'],['1','2','-3']]
 
@@ -418,7 +431,6 @@ print('Match: ', match)
 
 toc2 = time.perf_counter()
 print(f"Checked the 3SAT instance in {toc2 - tic2:0.4f} seconds")
-
 
 """"
 

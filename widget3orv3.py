@@ -2,6 +2,7 @@ from HellyTool import checkrs
 from HellyTool import findrscover
 from HellyTool import simplifycover
 from HellyTool import maxcliquesize
+from HellyTool import findncovers
 
 V3or = ['a','b','c','d','e','f','u','v','w']
 E3or = ['abuv','cduw','efwv',
