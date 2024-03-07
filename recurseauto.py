@@ -12,10 +12,11 @@ from HellyTool import simplifycover
 from HellyTool import labelappend
 from HellyTool import mergevertex
 from HellyTool import findrscover
+from HellyTool import graphfindtriangles
+from HellyTool import checkrsquicker
+from HellyTool import vertexremoveduplicates
+from check3SAT import numberofvariables, drawtruthtable, directsatcompute, labelbufferlength
 import time
-
-labelbufferlength = 2
-
 
 
 V = ['a1','b1','c1','z',
@@ -349,56 +350,65 @@ def build3sat( Terms ):
         print('3SAT case: ', "{0:b}".format(b).zfill(biggest) )
 
         tic = time.perf_counter()
+
+
+        """ a first effort to switch to checkrsquicker
+        T = graphfindtriangles(Vmaster,Emaster,False)
+
+        V = vertexremoveduplicates(Vmaster)
+        E2 = []
+        for e in Emaster:
+            E2.append(parsecondensed(e))
+
+        Vtemp = []
+        for v in Vmaster:
+            Vtemp.append(v)
+
+        V2 = []
+        while len(Vtemp) > 0:
+            minv = Vtemp[0]
+            for v in Vtemp:
+                if v < minv:
+                    minv = v
+                    changed = True
+            V2 = V2 + [minv]
+            Vtemp.remove(minv)
+
+        Voverall = []
+        for v in V2:
+            Voverall.append(v)
+
+        E3 = []
+        for e in E2:
+            for e1 in e:
+                for e2 in e:
+                    if e1 < e2:
+                        if not [e1, e2] in E3:
+                            E3.append([e1, e2])
+
+        Ctemp = []
+        for c in Cmaster:
+            Ctemp.append(parsecondensed(c))
+
+        Ctemp2 = []
+        for c in Ctemp:
+            found = False
+            for v in c:
+                found = found or (v in V2)
+            if found:
+                Ctemp2.append(c)
+
+        Coverall = Ctemp2
+        Eoverall = []
+        for e in E3:
+            Eoverall.append(e)
+        """
+
         r = r + [checkrsquick(Vmaster, Emaster, Cmaster, False)]
         toc = time.perf_counter()
         print(f"Checked the RS-cover in {toc - tic:0.4f} seconds")
 
     return r
-def drawtruthtable(B,R):
-    biggest = 0
-    for b in B:
-        if b > 2**biggest:
-            biggest = biggest + 1
-    for b in B:
-        print( "{0:b}".format(b).zfill(biggest), ' ', R[b])
-
-def directsatcompute( Terms, Input ):
-    Termstemp = []
-    biggest = 0
-    j=0
-    for c in Terms:
-        vartemp = []
-        negtemp = []
-        for l in c:
-            ntemp = ''
-            if l[0] in string.digits:
-                ntemp = ntemp + '+'
-                v = l
-            else:
-                if not l[0] in ['+','-']:
-                    print('Illegal format: ', l)
-                v = ''
-                ntemp = ntemp + l[0]
-                for i in range(1,len(l)):
-                    v = v + l[i]
-            v = str(int(v)).zfill(labelbufferlength)
-            biggest = int(v) if int(v) > biggest else biggest
-            vartemp = vartemp + [v]
-            negtemp = negtemp + [ntemp]
-        Termstemp = Termstemp + [[vartemp,negtemp]]
-        j = j + 1
-    r2 = True
-    for c in Termstemp:
-        r = False
-        ct = c[0]
-        cn = c[1]
-        for n in range(len(ct)):
-            lt = [False,True] if cn[n]=='+' else [True,False]
-            r = r or (lt[(Input >> (int(ct[n])-1)) & 1])
-            #r = r or (lt[Input & 2**(int(ct[n])-1) > 0])
-        r2 = r2 and r
-
-    return r2
 
 tic2 = time.perf_counter()
 
@@ -412,27 +422,29 @@ tic2 = time.perf_counter()
 #print(Vvar, Evar, Cvar, V,E,C)
 #checkrs(V,E,C)
 #findrscover(V,E,C,False)
+def main():
 
-n = 3
-#satproblem = [['+1','+2','+3'],['-1','-2','+3'],['1','2','-3'],['1','2','-4'],['3','4','5'],['2','-3','5']]
-#satproblem = [['+1','+2','+3'],['-1','-2','+3'],['1','2','-3'],['1','2','-4']]
+    satproblem = [['+1','+2','+3'],['-1','-2','+3'],['1','2','-3'],['1','2','-4'],['3','4','5'],['2','-3','5']] # runs in 7271 seconds ( 7419.6 seconds under failed multiprocess effort) on NUC12
+    #satproblem = [['+1','+2','+3'],['-1','-2','+3'],['1','2','-3'],['1','2','-4']] # runs in 447.8 seconds (was 496.14 seconds ... 560 seconds under failed multiprocess effort) on NUC12
 
-satproblem = [['+1','+2','+3'],['-1','-2','+3'],['1','2','-3']]
+    #satproblem = [['+1','+2','+3'],['-1','-2','+3'],['1','2','-3']] # runs in 30.5 to 32.3 seconds (was 39.5 under failed multiprocess effort) seconds on NUC12
+    n = numberofvariables(satproblem)
+    r = build3sat(satproblem)
+    rcomp = []
+    match = True
+    for b in range(2**n):
+        rcomp = rcomp + [directsatcompute(satproblem,b)]
+        match = match and (r[b] == directsatcompute(satproblem,b))
+    drawtruthtable(range(2**n),r)
+    drawtruthtable(range(2**n),rcomp)
+    print('Match: ', match)
 
-r = build3sat(satproblem)
-rcomp = []
-match = True
-for b in range(2**n):
-    rcomp = rcomp + [directsatcompute(satproblem,b)]
-    match = match and (r[b] == directsatcompute(satproblem,b))
-drawtruthtable(range(2**n),r)
-drawtruthtable(range(2**n),rcomp)
-print('Match: ', match)
+    toc2 = time.perf_counter()
+    print(f"Checked the 3SAT instance in {toc2 - tic2:0.4f} seconds")
 
-toc2 = time.perf_counter()
-print(f"Checked the 3SAT instance in {toc2 - tic2:0.4f} seconds")
-
-""""
+if __name__ == '__main__':
+    main()
+"""
 
 The following code has been automated in the form of the above "build3sat" function.
 

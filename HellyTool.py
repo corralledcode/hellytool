@@ -1,6 +1,11 @@
-
+import os
 import string
 import time
+import numpy as np
+from multiprocessing.sharedctypes import RawArray
+from multiprocessing.pool import Pool
+from multiprocessing import Array, Process, shared_memory, Manager, Queue
+import multiprocessing
 
 def parsecondensed(s):
     P = []
@@ -117,6 +122,74 @@ def checkrs(V,E,C,verbose=True):
     print('All triangles met: ', alltriangle)
     return alltriangle
 
+def graphfindtrianglesold(V,E, verbose = True):
+
+    output = []
+    for v1 in V:
+        for v2 in V:
+            for v3 in V:
+                if v1<v2 and v2<v3:
+                    if [v1,v2] in E and [v1,v3] in E and [v2,v3] in E:
+                        if verbose:
+                            print('Triangle ',v1+v2+v3)
+                        output.append([v1,v2,v3])
+    return output
+
+
+def graphfindtrianglesprocess(V,E,ranlow,ranhigh,return_triangles,p):
+    output = []
+    for i in range(ranlow,ranhigh):
+        for v1 in E[i]:
+            for v2 in E[i]:
+                if v1 != v2:
+                    for v3 in V:
+                        if [v1,v3] in E and [v2,v3] in E:
+                            if v1<v2<v3:
+                                output.append([v1,v2,v3])
+                            if v1<v3<v2:
+                                output.append([v1, v3, v2])
+                            if v2<v1<v3:
+                                output.append([v2, v1, v3])
+                            if v2<v3<v1:
+                                output.append([v2, v3, v1])
+                            if v3<v1<v2:
+                                output.append([v3, v1, v2])
+                            if v3<v2<v1:
+                                output.append([v3, v2, v1])
+    return_triangles[p] = output
+
+def graphfindtriangles(V,E, verbose = True):
+
+    output=[]
+    processcount = os.cpu_count()
+    intervals = len(E)//processcount
+
+    manager = multiprocessing.Manager()
+    return_triangles = manager.dict()
+
+    process = []
+    for i in range(processcount):
+        ranlow = intervals * i
+        ranhigh = intervals*(i+1)
+        process.append(Process(target=graphfindtrianglesprocess, args=(V,E,ranlow,ranhigh,return_triangles,i)))
+    for i in range(processcount):
+        process[i].start()
+    for i in range(processcount):
+        process[i].join()
+
+    for s in return_triangles.values():
+        for t in s:
+            output.append(t)
+
+    #remove duplicates
+
+    output2 = []
+    for i in range(len(output)):
+        if not (output[i] in output[i+1:-1]):
+            output2.append(output[i])
+
+    return output2
+
 def checkrsquicker(V,E,C,T = [],verbose=True):
 
     E2 = E
@@ -169,7 +242,70 @@ def checkrsquicker(V,E,C,T = [],verbose=True):
     #    print('All triangles met: ', alltriangle)
     return alltriangle
 
-def checkrsquick(V,E,C,verbose=True):
+process_array_C = None
+process_array_C_shape = None
+process_array_T = None
+process_array_T_shape = None
+process_verbose = True
+def init_checktriangle(array_C, array_C_shape, array_T,array_T_shape,verbose = True):
+    global process_array_C, process_array_C_shape, process_array_T, process_array_T_shape, process_verbose
+    process_array_C = array_C
+    process_array_C_shape = array_C_shape
+    process_array_T = array_T
+    process_array_T_shape = array_T_shape
+    process_verbose = verbose
+
+
+def checktriangle(C,maxC, T, maxT, ranlow, ranhigh, return_alltriangle, p, verbose = False):
+    alltriangle = True
+    for i in range(ranlow,ranhigh):
+        t = []
+        for k in range(maxT):
+            t = t + [T[i*maxT+k]]
+        allmeet = False
+        N = []
+        neighborstext = []
+        for j in range(len(C)//maxC):
+            c = []
+            for l in range(maxC):
+                if C[j*maxC + l] != None:
+                    c = c + [C[j * maxC + l]]
+                else:
+                    break
+            if (t[0] in c and t[1] in c) or (t[1] in c and t[2] in c) or (t[2] in c and t[0] in c):
+                N.append(c)
+        neighborstext = neighborstext + N
+        if verbose:
+            print('neighbors: ', N)
+        meettext = ''
+        if len(N) > 0:
+            for v in N[0]:  # changed
+                meet = True
+                for n in range(1, len(N)):
+                    meet = (meet and (v in N[n]))
+                    if not meet:  # added
+                        break  # added
+                if meet:
+                    meettext = meettext + v
+                    # print('Meet ',v,': ',meet)
+                    allmeet = True
+                    break
+        if verbose:
+            print('Meet: ', meettext)
+            print('All meet at triangle ', t[0] + t[1] + t[2], allmeet)
+        else:
+            if not allmeet:
+                print('Failed at triangle ', t[0] + t[1] + t[2], ' with meet ', meettext, 'neighbors ',
+                      neighborstext)
+        alltriangle = (alltriangle and allmeet)
+        if not alltriangle:  # added
+            break  # added
+
+    return_alltriangle[p] = alltriangle
+    #return alltriangle
+
+
+def checkrsquick(V,E,C,verbose=True,T = None):
 
     V = vertexremoveduplicates(V)
     E2 = []
@@ -220,49 +356,100 @@ def checkrsquick(V,E,C,verbose=True):
             alllegaledges = False
     if not alllegaledges:
         print('All edges legal: ',alllegaledges)
+
+    processcount = os.cpu_count()
+
+    if T == None:
+        T = graphfindtriangles(V,E3,verbose)
+
+
+
+    """ debugging code
+    T2 = graphfindtrianglesold(V,E3,verbose)
+    print(len(T),len(T2))
+
+    sortedT2 = []
+    for i in range(len(T2)):
+        v1 = T2[i][0]
+        v2 = T2[i][1]
+        v3 = T2[i][2]
+        if v1 < v2 < v3:
+            sortedT2.append([v1, v2, v3])
+        if v1 < v3 < v2:
+            sortedT2.append([v1, v3, v2])
+        if v2 < v1 < v3:
+            sortedT2.append([v2, v1, v3])
+        if v2 < v3 < v1:
+            sortedT2.append([v2, v3, v1])
+        if v3 < v1 < v2:
+            sortedT2.append([v3, v1, v2])
+        if v3 < v2 < v1:
+            sortedT2.append([v3, v2, v1])
+
+    temp = []
+    for i in range(len(sortedT2)):
+        if not (sortedT2[i] in sortedT2[i+1:-1]):
+            temp.append(sortedT2[i])
+    print(len(temp))
+    for t in temp:
+        if not t in T:
+            print ('t ',t,'not in T')
+    for t in T:
+        if not t in temp:
+            print ('t ',t,'not in temp')
+    """
+
+    intervals = len(T) // processcount
+    #idx = np.array([range(len(T))]*processcount)
+    #print(idx)
+
+    maxC = 0
+    for c in C2:
+        maxC = len(c) if len(c)>maxC else maxC
+
+    maxT = 0
+    for t in T:
+        maxT = len(t) if len(t)>maxT else maxT
+
+    Cprocess = shared_memory.ShareableList(range(len(C2)*maxC))
+    Tprocess = shared_memory.ShareableList(range(len(T)*maxT))
+
+    for i in range(len(T)):
+        for j in range(maxT):
+            Tprocess[i*maxT + j] = T[i][j]
+
+    for i in range(len(C2)):
+        for j in range(maxC):
+            if j < len(C2[i]):
+                Cprocess[i*maxC + j] = C2[i][j]
+            else:
+                Cprocess[i*maxC + j] = None
+
+    #idx = shared_memory.ShareableList(range(processcount))
+    #for i in range(processcount - 1):
+    #    idx[i] = range(intervals * i, intervals * (i + 1) - 1)
+    #idx[i] = range(intervals*(i+1),len(T))
+
+    manager = multiprocessing.Manager()
+    return_alltriangles = manager.dict()
+
+    process = []
+    for i in range(processcount):
+        ranlow = intervals * i
+        ranhigh = intervals*(i+1)-1 if i < processcount-1 else len(T)
+        process.append(Process(target=checktriangle, args=(Cprocess,maxC,Tprocess,maxT,ranlow,ranhigh,return_alltriangles,i,verbose)))
+    for i in range(processcount):
+        process[i].start()
+    for i in range(processcount):
+        process[i].join()
+
     alltriangle = True
-    for v1 in V:
-        for v2 in V:
-            for v3 in V:
-                if v1<v2 and v2<v3:
-                    if [v1,v2] in E3 and [v1,v3] in E3 and [v2,v3] in E3:
-                        if verbose:
-                            print('Triangle ',v1+v2+v3)
-                        allmeet = False
-                        N = []
-                        neighborstext=[]
-                        for c in C2:
-                            if (v1 in c and v2 in c) or (v1 in c and v3 in c) or (v2 in c and v3 in c):
-                                N.append(c)
-                        neighborstext = neighborstext + N
-                        if verbose:
-                            print('neighbors: ',N)
-                        meettext = ''
-                        if len(N)>0:
-                            for v in N[0]: # changed
-                                meet = True
-                                for n in N:
-                                    meet = (meet and (v in n))
-                                    if not meet: # added
-                                        break    # added
-                                if meet:
-                                    meettext = meettext + v
-                                    #print('Meet ',v,': ',meet)
-                                    allmeet = True
-                                    break
-                        if verbose:
-                            print('Meet: ',meettext)
-                            print('All meet at triangle ', v1+v2+v3, allmeet)
-                        else:
-                            if not allmeet:
-                                print('Failed at triangle ',v1+v2+v3, ' with meet ',meettext, 'neighbors ',neighborstext)
-                        alltriangle = (alltriangle and allmeet)
-                if not alltriangle: #added
-                    break           #added
-            if not alltriangle:     #added
-                break               #added
-        if not alltriangle:         #added
-            break                   #added
+    print(return_alltriangles.values())
+    for b in return_alltriangles.values():
+        if not b:
+            alltriangle = False
+            break
+
     if verbose:
         print('All triangles met: ', alltriangle)
     return alltriangle
@@ -288,16 +475,6 @@ def simplifycover(C,verbose=True):
 
     return Ctemp
 
-def graphfindtriangles(V,E):
-
-    output = []
-    for v1 in V:
-        for v2 in V:
-            for v3 in V:
-                if v1<v2 and v2<v3:
-                    if [v1,v2] in E and [v1,v3] in E and [v2,v3] in E:
-                        output.append([v1,v2,v3])
-    return output
 
 def labelappend( V, E, C, d ):
     Vtemp = []
@@ -696,6 +873,8 @@ def findrscover(V, E, C = [], verbose = True):
 #print(maxcliquesize(['b','a','c'],['ab','ac','bc']))
 
 #V=('a','b','c','a2','a23','a','b3','b100','b2','a','b3')
+
+
 #E=('ab','ba2','aa23','ad','bb3','b100b2','b101b','ba','da2','abca2')
 #C=('aba2','aa23d','bb3','b2b100')
 
