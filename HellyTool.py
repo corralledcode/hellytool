@@ -436,7 +436,7 @@ def checkrsquick(V,E,C,verbose=True,T = None):
     process = []
     for i in range(processcount):
         ranlow = intervals * i
-        ranhigh = intervals*(i+1)-1 if i < processcount-1 else len(T)
+        ranhigh = intervals*(i+1) if i < processcount-1 else len(T)
         process.append(Process(target=checktriangle, args=(Cprocess,maxC,Tprocess,maxT,ranlow,ranhigh,return_alltriangles,i,verbose)))
     for i in range(processcount):
         process[i].start()
@@ -633,6 +633,60 @@ def maxcliquesize(V,E):
 
     return length
 
+def checkrsprocess(V,E,C, con,T,ranlow,ranhigh,return_goodcover,p,verbose=False):
+
+    cover = []
+    for n in range(ranlow,ranhigh):
+
+        #       Cstr = []
+        count = 0
+        C2 = []
+        for k in range(len(con)):
+            if ((2 ** k) & n) > 0:
+                #              Cstr.append(constr[k])
+                C2.append(con[k])
+            # C2 = simplifycover(C2,verbose)
+        for c in C:
+            C2.append(c)
+
+        # C2 = simplifycover(C2,verbose)
+
+        #    E3 = []
+        #    for e in E2:
+        #        for e1 in e:
+        #            for e2 in e:
+        #                if e1 < e2:
+        #                    if not [e1, e2] in E3:
+        #                        E3.append([e1, e2])
+
+        allcovered = True
+        for v1 in V: # speed up this for loop
+            for v2 in V:
+                if [v1, v2] in E:
+                    covered = False
+                    for c in C2:
+                        if v1 in c and v2 in c:
+                            covered = True
+                    if not covered:
+                        allcovered = False
+                        break
+                if not allcovered:
+                    break
+            if not allcovered:
+                break
+
+                #    print('Edge ', v1, ' to ', v2, 'not covered')
+                # else:
+                #    print('Edge ', v1, ' to ', v2, ' covered')
+
+        if verbose:
+            print('All covered: ', allcovered)
+        if allcovered:
+            if checkrsquicker(V, E, C2, T, verbose):
+                cover.append(C2)
+    if cover != []:
+        return_goodcover[p] = cover
+
 def findrscover(V, E, C = [], verbose = True):
 
     tic = time.perf_counter()
@@ -740,8 +794,8 @@ def findrscover(V, E, C = [], verbose = True):
 
     print('Using max clique size =',mcs,' to reduce the problem of 2**',len(V2),'=',2**len(V2),' subsets of vertices')
 
-    contemp = findncoversbare(V2,E3,mcs)
-    T = graphfindtriangles(V, E3)
+    contemp = findncoversbare(Voverall,Eoverall,mcs)
+    T = graphfindtriangles(Voverall, Eoverall)
 
     """ following code working but commented out to make way for findncovers
     for k in range(2**len(V2)):
@@ -802,57 +856,31 @@ def findrscover(V, E, C = [], verbose = True):
 #            constr.append(temp)
 
     rscovers = []
-    print(con, len(con),2**len(con))
 
-    for n in range(2**len(con)):
- #       Cstr = []
-        C2 = []
-        count = 0
-        for k in range(len(con)):
-            if ((2 ** k) & n) > 0:
-                #              Cstr.append(constr[k])
-                C2.append(con[k])
-            # C2 = simplifycover(C2,verbose)
+    processcount = os.cpu_count()
 
-        for c in Ctemp2:
-            C2.append(c)
+    interval = (2**len(con))//processcount
 
-        #C2 = simplifycover(C2,verbose)
+    manager = multiprocessing.Manager()
+    return_goodcover = manager.dict()
 
+    process = []
 
-    #    E3 = []
-    #    for e in E2:
-    #        for e1 in e:
-    #            for e2 in e:
-    #                if e1 < e2:
-    #                    if not [e1, e2] in E3:
-    #                        E3.append([e1, e2])
+    for i in range(processcount):
+        ranlow = interval * i
+        ranhigh = interval * (i + 1) if i < processcount - 1 else 2**len(con)
+        process.append(Process(target=checkrsprocess, args=(Voverall, Eoverall, Ctemp2, con, T,ranlow,ranhigh, return_goodcover, i, verbose)))
 
-        allcovered = True
-        for v1 in V2:
-            for v2 in V2:
-                if [v1, v2] in E3:
-                    covered = False
-                    for c in C2:
-                        if v1 in c and v2 in c:
-                            covered = True
-                    if not covered:
-                        allcovered = False
-                        break
-                if not allcovered:
-                    break
-            if not allcovered:
-                break
+    for i in range(processcount):
+        process[i].start()
+    for i in range(processcount):
+        process[i].join()
 
-                    #    print('Edge ', v1, ' to ', v2, 'not covered')
-                    # else:
-                    #    print('Edge ', v1, ' to ', v2, ' covered')
+    print('Returned: ', len(return_goodcover.values()))
+    for c in return_goodcover.values():
+        for c2 in c:
+            rscovers.append(c2)
 
-        if verbose:
-            print('All covered: ', allcovered)
-        if allcovered:
-            if checkrsquicker(Voverall,Eoverall,C2,T,verbose):
-                rscovers.append(C2)
     toc = time.perf_counter()
     print('Found', len(rscovers), 'RS-covers:')
     for c in rscovers:
