@@ -327,16 +327,24 @@ def checkrsquick(V,E,C,verbose=True,T = None):
 
     #print('Ordered edges: ',E3)
     allcovered = True
-    for v1 in V:
-        for v2 in V:
-            if [v1,v2] in E3:
-               covered = False
-               for c in C2:
-                    if v1 in c and v2 in c:
-                        covered = True
-               if not covered:
-                   allcovered = False
-                   print('Edge ', v1, ' to ', v2, 'not covered')
+    for e in E3:
+        for v1 in e:
+            for v2 in e:
+                if v1 != v2:
+                    covered = False
+                    for c in C2:
+                        if (v1 in c) and (v2 in c):
+                            covered = True
+#    for v1 in V:
+#        for v2 in V:
+#            if [v1,v2] in E3:
+#               covered = False
+#               for c in C2:
+#                    if v1 in c and v2 in c:
+#                        covered = True
+                    if not covered:
+                        allcovered = False
+                        print('Edge ', v1, ' to ', v2, 'not covered')
                #else:
                #    print('Edge ', v1, ' to ', v2, ' covered')
     if verbose:
@@ -659,14 +667,16 @@ def checkrsprocess(V,E,C, con,T,ranlow,ranhigh,return_goodcover,p,verbose=False)
         #                    if not [e1, e2] in E3:
         #                        E3.append([e1, e2])
 
+
         allcovered = True
-        for v1 in V: # speed up this for loop
-            for v2 in V:
-                if [v1, v2] in E:
+        for e in E:
+            for v1 in e:
+                for v2 in e:
                     covered = False
                     for c in C2:
                         if v1 in c and v2 in c:
                             covered = True
+                            break
                     if not covered:
                         allcovered = False
                         break
@@ -675,6 +685,24 @@ def checkrsprocess(V,E,C, con,T,ranlow,ranhigh,return_goodcover,p,verbose=False)
             if not allcovered:
                 break
 
+
+        """
+        for v1 in V:
+            for v2 in V:
+                if [v1, v2] in E:
+                    covered = False
+                    for c in C2:
+                        if v1 in c and v2 in c:
+                            covered = True
+                            break
+                    if not covered:
+                        allcovered = False
+                        break
+                if not allcovered:
+                    break
+            if not allcovered:
+                break
+        """
                 #    print('Edge ', v1, ' to ', v2, 'not covered')
                 # else:
                 #    print('Edge ', v1, ' to ', v2, ' covered')

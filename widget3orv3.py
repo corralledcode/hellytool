@@ -51,5 +51,5 @@ C3orE = simplifycover(C3orE)
 
 #print(maxcliquesize(V3orE,E3or))
 
-findrscover(V3orE,E3orE,C3orE,False)
+findrscover(V3orE,E3orE,['d1d2d3e1e2e3','a1b1c1d1e1','a2b2c2d2e2','b1c1z1','b2c2z2','b3c3z3','a3b3c3d3e3'],False)
 

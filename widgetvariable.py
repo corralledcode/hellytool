@@ -18,3 +18,4 @@ CvarFx = Cvar + ['a01c01z','a02c02z']
 #checkrs(Vvar,Evar,CvarF)
 
 #findrscover(Vvar,Evar,['b01c01b02c02z'],False)
+#findrscover(Vvar,Evar,[],False)
