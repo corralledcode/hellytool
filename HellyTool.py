@@ -1,7 +1,8 @@
 import os
 import string
 import time
-import numpy as np
+from math import floor
+#import numpy as np
 from multiprocessing.sharedctypes import RawArray
 from multiprocessing.pool import Pool
 from multiprocessing import Array, Process, shared_memory, Manager, Queue
@@ -161,16 +162,18 @@ def graphfindtrianglesprocess(V,E,ranlow,ranhigh,return_triangles,p):
 def graphfindtriangles(V,E, verbose = True):
 
     output=[]
+    print('E',E)
     processcount = os.cpu_count()
-    intervals = len(E)//processcount
-
+    #processcount = 1
+    intervals = len(E)/processcount
+    print(intervals)
     manager = multiprocessing.Manager()
     return_triangles = manager.dict()
 
     process = []
     for i in range(processcount):
-        ranlow = intervals * i
-        ranhigh = intervals*(i+1)
+        ranlow = floor(i * intervals)
+        ranhigh = floor(intervals*(i+1)) if i+1<processcount else len(E)
         process.append(Process(target=graphfindtrianglesprocess, args=(V,E,ranlow,ranhigh,return_triangles,i)))
     for i in range(processcount):
         process[i].start()
@@ -181,8 +184,8 @@ def graphfindtriangles(V,E, verbose = True):
         for t in s:
             output.append(t)
 
-    #remove duplicates
 
+    #remove duplicates
     output2 = []
     for i in range(len(output)):
         if not (output[i] in output[i+1:-1]):
@@ -407,7 +410,7 @@ def checkrsquick(V,E,C,verbose=True,T = None):
             print ('t ',t,'not in temp')
     """
 
-    intervals = len(T) // processcount
+    intervals = len(T) / processcount
     #idx = np.array([range(len(T))]*processcount)
     #print(idx)
 
@@ -443,8 +446,8 @@ def checkrsquick(V,E,C,verbose=True,T = None):
 
     process = []
     for i in range(processcount):
-        ranlow = intervals * i
-        ranhigh = intervals*(i+1) if i < processcount-1 else len(T)
+        ranlow = floor(intervals * i)
+        ranhigh = floor(intervals*(i+1)) if i < processcount-1 else len(T)
         process.append(Process(target=checktriangle, args=(Cprocess,maxC,Tprocess,maxT,ranlow,ranhigh,return_alltriangles,i,verbose)))
     for i in range(processcount):
         process[i].start()
@@ -714,6 +717,8 @@ def checkrsprocess(V,E,C, con,T,ranlow,ranhigh,return_goodcover,p,verbose=False)
                 cover.append(C2)
     if cover != []:
         return_goodcover[p] = cover
+    else:
+        return_goodcover[p] = []
 
 def findrscover(V, E, C = [], verbose = True):
 
@@ -887,7 +892,7 @@ def findrscover(V, E, C = [], verbose = True):
 
     processcount = os.cpu_count()
 
-    interval = (2**len(con))//processcount
+    interval = (2**len(con))/processcount
 
     manager = multiprocessing.Manager()
     return_goodcover = manager.dict()
@@ -895,8 +900,8 @@ def findrscover(V, E, C = [], verbose = True):
     process = []
 
     for i in range(processcount):
-        ranlow = interval * i
-        ranhigh = interval * (i + 1) if i < processcount - 1 else 2**len(con)
+        ranlow = floor(interval * i)
+        ranhigh = floor(interval * (i + 1)) if i < processcount - 1 else 2**len(con)
         process.append(Process(target=checkrsprocess, args=(Voverall, Eoverall, Ctemp2, con, T,ranlow,ranhigh, return_goodcover, i, verbose)))
 
     for i in range(processcount):
@@ -904,7 +909,7 @@ def findrscover(V, E, C = [], verbose = True):
     for i in range(processcount):
         process[i].join()
 
-    print('Returned: ', len(return_goodcover.values()))
+    #print('Returned: ', len(return_goodcover.values()))
     for c in return_goodcover.values():
         for c2 in c:
             rscovers.append(c2)
