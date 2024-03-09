@@ -162,11 +162,9 @@ def graphfindtrianglesprocess(V,E,ranlow,ranhigh,return_triangles,p):
 def graphfindtriangles(V,E, verbose = True):
 
     output=[]
-    print('E',E)
     processcount = os.cpu_count()
     #processcount = 1
     intervals = len(E)/processcount
-    print(intervals)
     manager = multiprocessing.Manager()
     return_triangles = manager.dict()
 

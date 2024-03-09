@@ -428,6 +428,7 @@ def main():
 
     #satproblem = [['+1','+2','+3'],['-1','-2','+3'],['1','2','-3'],['1','2','-4'],['3','4','5'],['2','-3','5']] # runs in 7271 seconds ( 7419.6 seconds under failed multiprocess effort) on NUC12
     satproblem = [['+1','+2','+3'],['-1','-2','+3'],['1','2','-3'],['1','2','-4']] # runs in 447.8 seconds (was 496.14 seconds ... 560 seconds under failed multiprocess effort) on NUC12
+                                                                                    # runs in 32 seconds on i9, and in 37 seconds on NUC 12 (i7)
 
     #satproblem = [['+1','+2','+3'],['-1','-2','+3'],['1','2','-3']] # runs in 30.5 to 32.3 seconds (was 39.5 under failed multiprocess effort) seconds on NUC12
     n = numberofvariables(satproblem)
